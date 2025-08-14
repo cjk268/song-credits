@@ -43,8 +43,3 @@ class Role(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-
-
-
-
-AAC3e6FPZtbuJUvPVx4E+yPahODfoOZgQwxOXv7vVcTcObajBm+fvyzZbcAK8br8DmoUoNc8D1jqpXIgXM94JFwqBZ/3FLpKITCKN1DY3zHQP8ZmjAwtui0dYUaffEOQDi1xnYMdoJxFI2kDuWawSgT3gbGxdhJLuRDT73CDkFw6hBlFpxIPdHVdss8hQJELCn3MaRiUs0IPwVRZlsWmnhQ50eDATK0h129MIzscjk32tsrtcCGoKG+/1o+ZvmxTZEY7v8CGxFyxVyIVCGzdgTNeiXu3H0tVapgd+v9Nswvy
