@@ -1,12 +1,13 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict
 
 @dataclass(frozen=True)
 class SpotifyConfig:
 
     open_spotify_url: str = os.environ.get(
         "SPOTIFY_BASE_URL",
-        "https://open.spotify.com/
+        "https://open.spotify.com/"
     )
 
     auth_token_url: str = os.environ.get(
@@ -19,11 +20,11 @@ class SpotifyConfig:
         "https://clienttoken.spotify.com/v1/clienttoken"
     )
 
-    js_sdk_data: Dict[str, str] = {
+    js_sdk_data: Dict[str, str] = field(default_factory=lambda: {
         "device_brand": "unknown",
         "device_model": "unknown",
         "os": "unknown",
         "os_version": "unknown",
         "device_id": "unknown",
         "device_type": "unknown"
-    }
+    })

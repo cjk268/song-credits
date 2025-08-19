@@ -1,12 +1,12 @@
+import os
 import time
 import requests
-from spotify_config import SpotifyConfig
+import asyncio
+from app.spotify_client.spotify_config import SpotifyConfig
 from typing import Optional, Dict
 from playwright.async_api import async_playwright
 
 class SpotifyClient:
-
-    TOKEN_EXPIRATION_BUFFER_SECONDS = 60
 
     def __init__(self, config=None, requests_timeout=5, proxies=None) -> None:
         self.config = config or SpotifyConfig()
@@ -16,9 +16,10 @@ class SpotifyClient:
 
         self.client_id: str | None = None
         self.client_token: str | None = None
-        self.client_token_expiration_timestamp: int | None = None # Unix in seconds
+        self.client_token_expiration_timestamp: int | None = None           # Unix in seconds
         self.access_token: str | None = None
-        self.access_token_expiration_timestamp: int | None = None # Unix in seconds
+        self.access_token_expiration_timestamp: int | None = None           # Unix in seconds
+        self.client_version = os.environ.get("SPOTIFY_CLIENT_VERSION")      # To-do: Get this via Spotify
 
 
     def get_track_credits(self):
@@ -46,7 +47,7 @@ class SpotifyClient:
                 url, 
                 headers=merged_headers, 
                 proxies=self.proxies,
-                data=payload,
+                json=payload,
                 timeout=self.requests_timeout, 
                 **kwargs
             )
@@ -76,7 +77,7 @@ class SpotifyClient:
             asyncio.run(self._get_auth_token())
 
         if self._is_client_token_expired():
-            self._get_client_token()
+            self.get_client_token()
 
         default_headers = {
             "Authorization": f"Bearer {self.access_token}"
@@ -92,7 +93,7 @@ class SpotifyClient:
         )
 
 
-    def _get_client_token(self):
+    def get_client_token(self):
         payload = {
             "client_data": {
                 "client_version": self.client_version,
@@ -100,7 +101,7 @@ class SpotifyClient:
                 "js_sdk_data": self.config.js_sdk_data
             }
         }
-        
+
         response = self._make_request(
             "POST",
             self.config.client_token_url,
@@ -116,9 +117,16 @@ class SpotifyClient:
         return self.client_token
 
 
+    async def get_auth_token(self):
+        if self._is_auth_token_expired():
+            return await self._get_auth_token()
+        
+        return self.auth_token
+
+
     async def _get_auth_token(self):
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             context = await browser.new_context()
             page = await context.new_page()
 
@@ -133,6 +141,7 @@ class SpotifyClient:
                 raise RuntimeError("accessToken not found in Spotify API response.")
 
             self.client_id = data.get("clientId")
+            print(self.client_id)
             self.access_token = data.get("accessToken")
             self.access_token_expiration_timestamp = (data.get("accessTokenExpirationTimestampMs") / 1000)
             
@@ -156,14 +165,11 @@ class SpotifyClient:
     def _is_token_expired_seconds(
         self, 
         token: str|None, 
-        expiration_timestamp: int|None, 
-        buffer_seconds: int|None = None
+        expiration_timestamp: int|None,
         ) -> bool:
         
         if not (token and expiration_timestamp):
             return True
         
-        buffer = buffer_seconds if buffer_seconds is not None else self.TOKEN_EXPIRY_BUFFER_SECONDS
-
         current_timestamp = int(time.time())
-        return current_timestamp > (expiration_timestamp - buffer)
+        return current_timestamp > expiration_timestamp
