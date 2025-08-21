@@ -2,7 +2,7 @@ from collections.abc import Generator
 from typing import Annotated
 from fastapi import Depends
 from app.core.database import engine
-from app.spotify_client.spotify_client import SpotifyClient
+from app.clients.spotify.client import SpotifyClient
 from sqlalchemy.orm import Session
 
 def get_db() -> Generator[Session, None, None]:

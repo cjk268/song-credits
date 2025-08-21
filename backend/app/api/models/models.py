@@ -1,10 +1,7 @@
 from pydantic import BaseModel
 
-class PlaylistCreditsRequest(BaseModel):
+class PlaylistCredits(BaseModel):
     playlist_uris: List[str]
 
-class TrackCreditsRequest(BaseModel):
+class TrackCredits(BaseModel):
     track_uri: str
-
-class TrackCreditsResponse(BaseModel):
-    pass

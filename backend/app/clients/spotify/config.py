@@ -20,6 +20,11 @@ class SpotifyConfig:
         "https://clienttoken.spotify.com/v1/clienttoken"
     )
 
+    base_credits_url: str = os.environ.get(
+        "SPOTIFY_CREDITS_URL",
+        "https://spclient.wg.spotify.com/track-credits-view/v0/experimental/"
+    )
+
     js_sdk_data: Dict[str, str] = field(default_factory=lambda: {
         "device_brand": "unknown",
         "device_model": "unknown",

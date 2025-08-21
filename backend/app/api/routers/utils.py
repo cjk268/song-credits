@@ -8,9 +8,9 @@ async def health() -> bool:
     return True
 
 @router.get("/authtoken")
-async def auth_token(spotify_client: SpotifyClientDep) -> str: 
-    return await spotify_client.get_auth_token()
+def auth_token(spotify_client: SpotifyClientDep) -> str: 
+    return spotify_client.get_auth_token()
 
 @router.get("/clienttoken")
-async def client_token(spotify_client: SpotifyClientDep) -> str: 
+def client_token(spotify_client: SpotifyClientDep) -> str: 
     return spotify_client.get_client_token()
