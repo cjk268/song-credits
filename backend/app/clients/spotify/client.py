@@ -1,12 +1,12 @@
-import os
 import time
 import asyncio
 import httpx
 from app.clients.spotify.config import SpotifyConfig
+from app.clients.client_base import ClientBase
 from typing import Optional, Dict, Union
-from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 
-class SpotifyClient:
+class SpotifyClient(ClientBase):
 
     def __init__(
             self, 
@@ -23,17 +23,25 @@ class SpotifyClient:
         self.client_token_expiration_timestamp: Optional[int] = None           # Unix in seconds
         self.access_token: Optional[str] = None
         self.access_token_expiration_timestamp: Optional[int] = None           # Unix in seconds
-        self.client_version: Optional[str] = os.environ.get("SPOTIFY_CLIENT_VERSION")      # To-do: Get this via Spotify
 
 
-    def _prepare_headers(self, headers: Optional[Dict[str, str]] = None, auth: bool = True) -> Dict[str, str]:
+    async def _prepare_headers(self, headers: Optional[Dict[str, str]] = None, auth: bool = True) -> Dict[str, str]:
         default_headers = {"Accept": "application/json", "Content-Type": "application/json"}
         merged_headers = default_headers | (headers or {})
 
         if auth:
-            merged_headers["Authorization"] = f"Bearer {self.get_auth_token()}"
-            merged_headers["client-token"] = self.get_client_token()
+            merged_headers["Authorization"] = f"Bearer {await self.get_auth_token()}"
+            merged_headers["client-token"] = await self.get_client_token()
         return merged_headers
+    
+    
+    def _handle_http_error(self, error: httpx.HTTPError) -> None:
+        try:
+            json_response = error.response.json()
+            print(json_response)
+        except ValueError:
+            print(error.response.text)
+        raise error
     
 
     def sync_request(
@@ -58,29 +66,70 @@ class SpotifyClient:
             response.raise_for_status()
 
         except httpx.HTTPError as http_error:
-            try:
-                json_response = http_error.response.json()
-                print(json_response)
-            except ValueError:
-                print(http_error.response.text)
-            raise 
+            self._handle_http_error(http_error)
+
+        return response
+
+    
+    async def async_request(
+            self, 
+            method: str, 
+            url: str, 
+            payload = None, 
+            headers: Optional[Dict[str, str]] = None,
+            auth: bool = True,
+            **kwargs
+        ) -> httpx.Response:
+        try:
+            headers = await self._prepare_headers(headers=headers, auth=auth)
+            
+            response = await self.async_client.request(
+                method, 
+                url, 
+                headers=headers, 
+                json=payload,
+                **kwargs
+            )
+            
+            response.raise_for_status()
+
+        except httpx.HTTPError as http_error:
+            self._handle_http_error(http_error)
 
         return response
 
 
-    def get_client_token(self):
+    async def _batch_request(
+            self, 
+            method: str, 
+            urls: list[str],
+            payload = None, 
+            headers: Optional[Dict[str, str]] = None,
+            auth: bool = True,
+            **kwargs
+        ):
+
+        async def req(url):
+            response = await self.async_request(method, url, payload, headers, auth, **kwargs)
+            return response.json()
+        
+        tasks = [req(url) for url in urls]
+        return await asyncio.gather(*tasks)
+
+
+    async def get_client_token(self):
         if self.client_token is None:
-            self.get_auth_token() # Assigns client id
+            await self.get_auth_token() # Assigns client id
 
         payload = {
             "client_data": {
-                "client_version": self.client_version,
+                "client_version": self.config.client_version,
                 "client_id": self.client_id,
                 "js_sdk_data": self.config.js_sdk_data
             }
         }
 
-        response = self.sync_request(
+        response = await self.async_request(
             "POST",
             self.config.client_token_url,
             payload=payload,
@@ -96,20 +145,21 @@ class SpotifyClient:
         return self.client_token
 
 
-    def get_auth_token(self):
+    async def get_auth_token(self):
+        """Opens spotify in a browser, waits for the auth token request and stores/returns the token"""
         if not self._is_auth_token_expired():
             return self.access_token
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
 
-            with page.expect_response(lambda r: self.config.auth_token_url in r.url) as response_info:
-                page.goto(self.config.open_spotify_url)
+            async with page.expect_response(lambda r: self.config.auth_token_url in r.url) as response_info:
+                await page.goto(self.config.open_spotify_url)
 
-            response = response_info.value
-            data = response.json()
+            response = await response_info.value
+            data = await response.json()
             
             browser.close()
             if "accessToken" not in data:
@@ -121,6 +171,17 @@ class SpotifyClient:
             
             return self.access_token
 
+
+    async def get_credits_by_track_id(self, track_id: str):
+        url = f"{self.config.credits_base_url}/{track_id}/credits"
+        response = await self.async_request('GET', url)
+        return response.json()
+    
+    
+    async def get_playlist_tracks(self, playlist_id: str): 
+        url = f"{self.config.api_base_url}/playlists/{playlist_id}"
+        response = await self.async_request('GET', url)
+        return response.json()
 
     def _is_auth_token_expired(self) -> bool:
         return self._is_token_expired_seconds(

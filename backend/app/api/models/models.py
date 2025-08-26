@@ -5,3 +5,6 @@ class PlaylistCredits(BaseModel):
 
 class TrackCredits(BaseModel):
     track_uri: str
+
+class TrackCreditsResponse(BaseModel):
+    pass

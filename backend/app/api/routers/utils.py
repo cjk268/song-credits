@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.dependencies import SpotifyClientDep
+from app.api.dependencies import ServiceDep
 
 router = APIRouter(prefix="/utils", tags=["utils"])
 
@@ -8,9 +8,9 @@ async def health() -> bool:
     return True
 
 @router.get("/authtoken")
-def auth_token(spotify_client: SpotifyClientDep) -> str: 
-    return spotify_client.get_auth_token()
+async def auth_token(service: ServiceDep) -> str: 
+    return await service.get_auth_token()
 
 @router.get("/clienttoken")
-def client_token(spotify_client: SpotifyClientDep) -> str: 
-    return spotify_client.get_client_token()
+async def client_token(service: ServiceDep) -> str: 
+    return await service.get_client_token()
