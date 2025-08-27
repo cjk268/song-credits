@@ -1,10 +1,12 @@
 import time
 import asyncio
 import httpx
+from app.core.logging import logger
 from app.clients.spotify.config import SpotifyConfig
 from app.clients.client_base import ClientBase
 from typing import Optional, Dict, Union
 from playwright.async_api import async_playwright
+
 
 class SpotifyClient(ClientBase):
 
@@ -38,9 +40,9 @@ class SpotifyClient(ClientBase):
     def _handle_http_error(self, error: httpx.HTTPError) -> None:
         try:
             json_response = error.response.json()
-            print(json_response)
+            logger.warning(json_response)
         except ValueError:
-            print(error.response.text)
+            logger.warning(error.response.text)
         raise error
     
 
@@ -161,13 +163,19 @@ class SpotifyClient(ClientBase):
             response = await response_info.value
             data = await response.json()
             
-            browser.close()
+            await browser.close()
             if "accessToken" not in data:
                 raise RuntimeError("accessToken not found in Spotify API response.")
 
             self.client_id = data.get("clientId")
             self.access_token = data.get("accessToken")
             self.access_token_expiration_timestamp = (data.get("accessTokenExpirationTimestampMs") / 1000)
+            
+            logger.info(
+                "New auth token fetched: access_token=%s, expires_at=%s",
+                self.access_token,
+                time.gmtime(int(self.access_token_expiration_timestamp)) # UTC format
+            )
             
             return self.access_token
 
@@ -179,6 +187,7 @@ class SpotifyClient(ClientBase):
     
     
     async def get_playlist_tracks(self, playlist_id: str): 
+        logger.info("Test")
         url = f"{self.config.api_base_url}/playlists/{playlist_id}"
         response = await self.async_request('GET', url)
         return response.json()

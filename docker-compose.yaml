@@ -24,10 +24,10 @@ services:
   backend:
     build:
       context: ./backend
-    depends_on:
-      db:
-        condition: service_healthy
-        restart: true
+    # depends_on:
+    #   db:
+    #     condition: service_healthy
+    #     restart: true
     ports:
       - "8000:8000"
     env_file:
@@ -39,6 +39,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+    volumes:
+      - ./backend/app:/app/app
 
 volumes:
   app-db-data:

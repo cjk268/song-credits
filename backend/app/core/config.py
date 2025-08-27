@@ -1,4 +1,6 @@
 from typing import Literal
+import logging
+from logging.config import dictConfig
 
 from pydantic import (
     BeforeValidator,
@@ -40,4 +42,4 @@ class Settings(BaseSettings):
             path=self.POSTGRES_DB,
         )
 
-settings = Settings() 
+settings = Settings()
