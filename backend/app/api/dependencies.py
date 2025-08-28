@@ -4,6 +4,7 @@ from fastapi import Depends
 from app.core.database import engine
 from app.api.service import MusicService
 from app.clients.spotify.client import SpotifyClient
+from app.clients.spotify.adapter import SpotifyAdapter
 from sqlalchemy.orm import Session
 
 def get_db() -> Generator[Session, None, None]:
@@ -13,7 +14,8 @@ def get_db() -> Generator[Session, None, None]:
 
 def get_service(session: Session = Depends(get_db)) -> Generator[MusicService, None, None]:
     spotify_client = SpotifyClient()
-    yield MusicService(spotify_client, session)
+    spotify_adapter = SpotifyAdapter()
+    yield MusicService(spotify_client, spotify_adapter, session)
 
 
 SessionDep = Annotated[Session, Depends(get_db)]

@@ -1,0 +1,6 @@
+from typing import List, Protocol
+from app.core.models import CreditModel, TrackModel
+
+class AdapterBase(Protocol):
+    async def to_normalised_track_credits(self, raw_data: dict) -> List[CreditModel]: ...
+    async def to_normalised_playlist_tracks(self, raw_data: dict) -> List[TrackModel]: ... 

@@ -2,9 +2,10 @@ import time
 import asyncio
 import httpx
 from app.core.logging import logger
+from app.core.helpers import benchmark
 from app.clients.spotify.config import SpotifyConfig
 from app.clients.client_base import ClientBase
-from typing import Optional, Dict, Union
+from typing import List, Optional, Dict, Union
 from playwright.async_api import async_playwright
 
 
@@ -39,8 +40,7 @@ class SpotifyClient(ClientBase):
     
     def _handle_http_error(self, error: httpx.HTTPError) -> None:
         try:
-            json_response = error.response.json()
-            logger.warning(json_response)
+            logger.warning(error)
         except ValueError:
             logger.warning(error.response.text)
         raise error
@@ -101,6 +101,7 @@ class SpotifyClient(ClientBase):
         return response
 
 
+    @benchmark
     async def _batch_request(
             self, 
             method: str, 
@@ -112,8 +113,7 @@ class SpotifyClient(ClientBase):
         ):
 
         async def req(url):
-            response = await self.async_request(method, url, payload, headers, auth, **kwargs)
-            return response.json()
+            return await self.async_request(method, url, payload, headers, auth, **kwargs)
         
         tasks = [req(url) for url in urls]
         return await asyncio.gather(*tasks)
@@ -147,6 +147,7 @@ class SpotifyClient(ClientBase):
         return self.client_token
 
 
+    @benchmark
     async def get_auth_token(self):
         """Opens spotify in a browser, waits for the auth token request and stores/returns the token"""
         if not self._is_auth_token_expired():
@@ -186,8 +187,13 @@ class SpotifyClient(ClientBase):
         return response.json()
     
     
+    async def get_credits_by_track_ids(self, track_ids: List[str]):
+        urls = [f"{self.config.credits_base_url}/{track_id}/credits" for track_id in track_ids]
+        responses = await self._batch_request('GET', urls)
+        return [response.json() for response in responses]
+    
+
     async def get_playlist_tracks(self, playlist_id: str): 
-        logger.info("Test")
         url = f"{self.config.api_base_url}/playlists/{playlist_id}"
         response = await self.async_request('GET', url)
         return response.json()
