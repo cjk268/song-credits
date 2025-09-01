@@ -1,5 +1,8 @@
 # Song Credits 
 
+## 
+**This is for educational purposes.** Use of this may violate terms of service and I assume no responsibility for misuse.
+
 ## Dev Notes
 Run `uv lock` to generate a new `uv.lock` file.
 
