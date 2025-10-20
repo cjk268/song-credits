@@ -42,5 +42,18 @@ services:
     volumes:
       - ./backend/app:/app/app
 
+  frontend:
+    networks:
+      - default
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+    volumes:
+    - ./frontend:/app
+
 volumes:
   app-db-data:
